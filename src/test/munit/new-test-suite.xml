@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="     http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd     http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd     http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd     http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+  <munit:config name="batch_processing_flow_5545.xml"/>
+  <munit:test name="batch_processing_flow_0" doc:id="e1601126-f6b7-4958-97f9-d0129275e5c0" description="Test batchprocessingFlow with successful batch processing of 5 records through all batch steps and completion.">
+    <munit:behavior>
+      <!-- Set up HTTP request event with appropriate headers and attributes for the flow -->
+      <munit:set-event doc:name="Set Event">
+        <munit:payload value="#[{}]" encoding="UTF-8" mediaType="application/json"/>
+        <munit:attributes value="#[{                 headers: {                     'content-type': 'application/json',                     'accept': 'application/json'                 },                 method: 'POST',                 requestPath: '/batch',                 requestUri: '/batch',                 queryParams: {},                 uriParams: {},                 version: 'HTTP/1.1',                 scheme: 'http',                 localAddress: '127.0.0.1:8081',                 remoteAddress: '127.0.0.1:12345'             }]"/>
+      </munit:set-event>
+      <!-- Mock the HTTP request to weatherstack.com API to return a sample weather response for each batch record -->
+      <munit-tools:mock-when doc:name="Mock HTTP Request to weatherstack API" processor="http:request">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Request" attributeName="doc:name"/>
+          <munit-tools:with-attribute whereValue="e07e68da-ca9c-43f6-8a5b-cdb19607ffeb" attributeName="doc:id"/>
+        </munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#[MunitTools::getResourceAsString('mes.json')]" mediaType="application/json" encoding="UTF-8" />
+				</munit-tools:then-return>
+      
+</munit-tools:mock-when>
+    </munit:behavior>
+    <munit:execution>
+      <!-- Execute the batchprocessingFlow via flow-ref -->
+      <flow-ref doc:name="Flow-ref to batchprocessingFlow" name="batchprocessingFlow"/>
+      <!-- Allow sufficient time for batch processing to complete by adding a sleep of 2 seconds -->
+      <munit-tools:sleep time="2000" doc:name="Sleep"/>
+    </munit:execution>
+    <munit:validation>
+      <!-- Verify that the HTTP request to weatherstack.com API is called 5 times -->
+      <munit-tools:verify-call doc:name="Verify HTTP Request to weatherstack API" processor="http:request" times="5">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Request" attributeName="doc:name"/>
+          <munit-tools:with-attribute whereValue="e07e68da-ca9c-43f6-8a5b-cdb19607ffeb" attributeName="doc:id"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify that the flow started logger is called once -->
+      <munit-tools:verify-call doc:name="Verify Flow Started Logger" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="0b057c2f-d193-4e44-a5a4-fb73d0c3e9d7" attributeName="doc:id"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify that the on-complete logger is called once -->
+      <munit-tools:verify-call doc:name="Verify ON COMPLETE Logger" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="ON COMPLETE Logger" attributeName="doc:name"/>
+          <munit-tools:with-attribute whereValue="e68ca3cc-db53-49c4-a161-72a1a9b94b1b" attributeName="doc:id"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify that the flow end logger is called once -->
+      <munit-tools:verify-call doc:name="Verify Flow End Logger" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="4ad434b4-7557-4d32-8a3e-0662e5a91923" attributeName="doc:id"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Assert that the final payload is properly transformed -->
+      <munit-tools:assert-that doc:name="Assert Final Payload Not Null" expression="#[payload]" is="#[MunitTools::notNullValue()]"/>
+    </munit:validation>
+  </munit:test>
+</mule>
