@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:snowflake="http://www.mulesoft.org/schema/mule/snowflake"
+	xmlns:x12="http://www.mulesoft.org/schema/mule/x12"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/x12 http://www.mulesoft.org/schema/mule/x12/current/mule-x12.xsd
+http://www.mulesoft.org/schema/mule/snowflake http://www.mulesoft.org/schema/mule/snowflake/current/mule-snowflake.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="e9bbdf1a-af25-40c0-9c3a-5cc89d3ec1f9" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="4f8c5d9b-dc76-4220-9594-117dd0e865bf" >
+		<http:request-connection host="api.weatherstack.com" />
+	</http:request-config>
+	<snowflake:snowflake-config name="Snowflake_Config" doc:name="Snowflake Config" doc:id="b5cd03ea-a6f5-4ec2-8c6b-0ff76d2431ab" >
+		<snowflake:snowflake-connection accountName="UPAGJVV-ENC13021" warehouse="COMPUTE_WH" database="CUSTOMER" schema="PUBLIC" user="AYYAPPAM339" password="WelcometoMulesoft123" role="ACCOUNTADMIN" />
+		
+
+	</snowflake:snowflake-config>
+		<snowflake:snowflake-config name="Fetch-Snowflake_Config" doc:name="Snowflake Config" doc:id="08597ef4-16b9-4083-8ce4-4cf84f4da937" >
+		<snowflake:snowflake-connection accountName="UPAGJVV-ENC13021" warehouse="COMPUTE_WH" database="SNOWFLAKE_SAMPLE_DATA" schema="TPCH_SF10" user="AYYAPPAM339" password="WelcometoMulesoft123" role="ACCOUNTADMIN" />
+		
+
+	</snowflake:snowflake-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="0afa4f38-7735-4386-8b12-22666aa2c6c1" >
+		<db:oracle-connection host="localhost" user="system" password="Baahulya@467" instance="XE" />
+	</db:config>
+	<flow name="batchprocessingFlow" doc:id="67bb920b-0fd1-4708-ac5d-5c2bebe2943c" >
+		<http:listener doc:name="Listener" doc:id="444e8864-c2cd-4dd1-ac4f-aa2276fe21bd" config-ref="HTTP_Listener_config" path="/batch"/>
+		<logger level="INFO" doc:name="Logger" doc:id="0b057c2f-d193-4e44-a5a4-fb73d0c3e9d7" message="--------------flow started----------"/>
+		<!-- [STUDIO:"Set Payload"]<set-payload value='#[[1,2,3,4,5,6,7,8,9,"a",11,12,13,14,15,16,17,18,19,"a",21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50&#93;&#93;' doc:name="Set Payload" doc:id="56be2091-ec34-497e-907b-731614359c73" /> [STUDIO] -->
+		<snowflake:select doc:name="Select" doc:id="e170d6fd-acd6-4752-8d57-8888acf17d5d" config-ref="Fetch-Snowflake_Config">
+			<snowflake:sql ><![CDATA[select * from CUSTOMER]]></snowflake:sql>
+		</snowflake:select>
+		<batch:job jobName="batchprocessingBatch_Job" doc:id="7f6be7dc-c7b8-43a8-9a11-72e34d017c17" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="209452ea-f364-41a3-b40f-5451b9187671" >
+					<logger level="INFO" doc:name="Logger" doc:id="4ad434b4-7557-4d32-8a3e-0662e5a91923" message="batch step" />
+					<ee:transform doc:name="Transform Message" doc:id="a475988b-1cd6-4b84-a4ef-ef55578d0cc1" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="0cf2576a-531d-4ca0-8420-173b4394b5f2" size="50000">
+						<snowflake:bulk-insert doc:name="Bulk insert" doc:id="04d8f2d3-5f6a-49cd-8cb4-8e09e0c4b6de" config-ref="Snowflake_Config">
+							<snowflake:sql><![CDATA[INSERT INTO CUST_INFO(C_CUSTKEY,C_NAME,C_ADDRESS,C_NATIONKEY,C_PHONE) VALUES(:C_CUSTKEY,:C_NAME,:C_ADDRESS,:C_NATIONKEY,:C_PHONE)]]></snowflake:sql>
+						</snowflake:bulk-insert>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+		</batch:job>
+		<ee:transform doc:name="Transform Message" doc:id="94118b20-f934-4873-9e2a-7e1808cf837c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="batchprocessingFlow1" doc:id="d9b1bdee-b047-494e-a830-2cdbd3be4469" >
+		<http:listener doc:name="Listener" doc:id="8ba1d189-1bed-4a85-bfa2-9b64db700ed2" config-ref="HTTP_Listener_config" path="/sp"/>
+		<ee:transform doc:name="Transform Message" doc:id="baa5e03d-b621-4820-845e-159f9f35b432" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+var a = 
+[
+  {
+    "txn": {
+      "txnType": "834",
+      "txnSetDate": "2024072609"
+    },
+    "member": {
+      "memberId": "M123456789",
+      "name": "John Doe"
+    },
+    "coverage": {
+      "planId": "PLN1001",
+      "startDate": "20240801"
+    }
+  },
+  {
+    "txn": {
+      "txnType": "834",
+      "txnSetDate": "20240726"
+    },
+    "member": {
+      "memberId": "M987654321",
+      "name": "Jane Smith"
+    },
+    "coverage": {
+      "planId": "PLN2002",
+      "startDate": "20240815"
+    }
+  }
+]
+
+
+output application/json
+---
+//a
+write(payload, "application/json")
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<try doc:name="Try" doc:id="2989d149-5686-402d-8856-3cdef3accae2" >
+			<until-successful maxRetries="5" doc:name="Until Successful" doc:id="a77235ff-33de-4978-8406-a04097338be5">
+			<db:stored-procedure doc:name="Stored procedure" doc:id="71ec8fab-9d76-48a7-9208-f69302e2d700" config-ref="Database_Config">
+			<db:sql><![CDATA[call pkg_enrollment_834.insert_834_data(:p_json)]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	p_json: payload
+}]]]></db:input-parameters>
+		</db:stored-procedure>
+		</until-successful>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="9fd610b8-a69d-4532-8faa-a3c5016893c6" >
+					<ee:transform doc:name="Transform Message" doc:id="8fc00fab-89a3-4441-8afd-625b3b1fe9e8" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="18ba6edf-b898-4cdc-b7e0-4b92a90fe05d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
